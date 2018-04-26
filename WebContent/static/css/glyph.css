@@ -1,0 +1,58 @@
+.progress-bar span	{
+	position: absolute;
+	width:85%;
+	font-weight: bold;
+	color: #424242; /*#fffde7*/
+}
+.card{
+	transition: box-shadow 0.2s;
+}
+
+.card:hover {
+	box-shadow: 0 0 10px 0 rgba(200,200,200,0.5)
+}
+
+.card a{
+	text-decoration: none !important;
+	color: #424242; /*#fffde7*/
+}
+
+.container {
+	padding-left: 0px;
+}
+
+.glyph{
+	margin:0px;
+	padding:0px;
+	margin-top: 20px;
+	display: inline-block;
+	height: 30px;
+	color: #424242;
+}
+
+h4.glyph{
+	padding-left: 25px;
+}
+
+.glyph.glyph-fire {
+	background:url(../images/glyphicons/png/glyphicons-23-fire.png) no-repeat center left;
+}
+
+.glyph.glyph-filter {
+	background:url(../images/glyphicons/png/glyphicons-321-filter.png) no-repeat center left;
+}
+
+.glyph.glyph-user {
+	background:url(../images/glyphicons/png/user.png) no-repeat center center;
+	background-size: 30px 30px;
+}
+
+.glyph.glyph-target {
+	background:url(../images/glyphicons/png/target.png) no-repeat center center;
+	background-size: 30px 30px;
+}
+
+.glyph.glyph-usd {
+	background:url(../images/glyphicons/png/usd.png) no-repeat center center;
+	background-size: 30px 30px;
+}

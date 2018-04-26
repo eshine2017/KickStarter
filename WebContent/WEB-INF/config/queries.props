@@ -1,0 +1,79 @@
+# name_of_query = <actual_query> (no semi colon)
+
+# sample
+fetch.continents = select * from asugumar.continent
+
+# authentication 
+auth.user = select * from asugumar.token where token = ?
+verify.password = select usid from asugumar.users where user_name=? and passwd=?
+insert.token = insert into asugumar.token values(?,?)
+
+# explore page
+recommend.all_categories = select * from sshi.main_category
+recommend.top_projects_old = select t.*, (select count(BACKER_ID) from asugumar.KS_BACKS where PROJECT_ID = t.PROJECT_ID) as NO_OF_BACKERS from (select CAST ((MONEY_PLEDGED / GOAL) * 100 AS INT) AS PERCENTAGE, p.* from dpan.ks_projects p where status='live' and rownum <= 12) t
+recommend.proj_maincategory = select * from (select CAST ((p.MONEY_PLEDGED / p.GOAL) * 100 AS INT) AS PERCENTAGE, p.project_id, p.name, p.blurb, p.photo, m.category_id as id from sshi.main_category m, sshi.subcategory s, dpan.ks_projects p where m.category_id = ? and m.category_id = s.category_id and s.subcategory_id = p.subcategory_id) where rownum < 7
+recommend.top_projects = select * from (SELECT  q.*,CAST ((q.MONEY_PLEDGED / q.GOAL) * 100 AS INT) AS PERCENTAGE FROM (SELECT a.*, ROW_NUMBER() OVER (PARTITION BY subcategory_id ORDER BY project_id) rn FROM dpan.ks_projects a where status='live') q WHERE   rn < 3 ORDER BY project_id) where rownum <=12
+
+# project model
+get.project = select * from dpan.ks_projects where PROJECT_ID = ?
+get.project.backers = select t.*,u.name from asugumar.ks_backers t join asugumar.ks_users u on t.BACKER_ID = u.user_id where t.backer_id in (select backer_id from asugumar.ks_backs where project_id = ?)
+
+# location model
+get.location = select * from asugumar.ks_locations where LOCATION_ID = ?
+
+# owner model
+get.owner = select * from asugumar.ks_creators a join asugumar.ks_users b on a.USER_ID = b.USER_ID where a.CREATOR_ID = ? 
+get.owner.byuid = select * from asugumar.ks_creators a join asugumar.ks_users b join a.USER_ID = b.USER_ID where a.USER_ID = ? 
+get.created.projects = select a.* from dpan.ks_projects a where a.OWNER_ID = ?
+
+# backer model
+get.backer = select * from asugumar.ks_backers a join asugumar.ks_users b on a.BACKER_ID = b.USER_ID where a.BACKER_ID = ? 
+get.backed.projects = select a.* from dpan.ks_projects a where project_id in (select project_id from asugumar.ks_backs where backer_id = ?)
+
+# main category model
+get.maincategory = select * from sshi.main_category where category_id = ?
+
+# sub category model
+get.subcategory = select * from sshi.subcategory where subcategory_id = ?
+
+# profile picture model
+get.profilepic = select * from asugumar.ks_profile_pics where user_id = ?
+
+# money movement
+get.moneymovement.location = select * from (select l.latitude, l.longitude, l.slug, l.displayable_name, l1.NO_OF_BACKINGS from KS_LOCATIONS l join (select LOCATION_ID, count(*) as NO_OF_BACKINGS from KS_BACKERS where BACKER_ID  IN (select BACKER_ID from KS_BACKS where PROJECT_ID IN (select PROJECT_ID from dpan.KS_PROJECTS where LOCATION_ID = ?)) group by LOCATION_ID) l1 on l.LOCATION_ID = l1.LOCATION_ID order by NO_OF_BACKINGS DESC) where rownum<=30
+get.moneymovement = select l.latitude, l.longitude, l.slug, l.displayable_name, l1.NO_OF_BACKINGS from asugumar.KS_LOCATIONS l join (select LOCATION_ID, count(*) as NO_OF_BACKINGS from KS_BACKERS where BACKER_ID  IN (select BACKER_ID from KS_BACKS where PROJECT_ID = ?) group by LOCATION_ID) l1 on l.LOCATION_ID = l1.LOCATION_ID
+
+# project api
+get.project.full = select * from dpan.ks_projects p join asugumar.ks_locations l on p.location_id = l.location_id join sshi.subcategory s on p.subcategory_id = s.subcategory_id join asugumar.ks_creators c on p.owner_id = c.creator_id join sshi.main_category m on m.category_id = s.category_id join asugumar.ks_profile_pics pp on pp.user_id = c.user_id where PROJECT_ID = ?
+get.project.backerlocations = select * from (select * from asugumar.ks_location_backs kb join asugumar.ks_locations l on kb.location_id = l.location_id where kb.project_id = ?) where rownum <= 20
+
+# location api
+get.project.bylocation = select * from dpan.ks_projects where location_id = ? and rownum <10
+get.owners.bylocation = select * from asugumar.ks_creators join asugumar.ks_users on asugumar.ks_creators.user_id = asugumar.ks_users.user_id join asugumar.ks_profile_pics on asugumar.KS_USERS.USER_ID = asugumar.KS_PROFILE_PICS.USER_ID where location_id = ? and rownum <10
+get.backers.bylocation = select * from asugumar.ks_backers join asugumar.ks_users on asugumar.ks_backers.backer_id = asugumar.ks_users.user_id join asugumar.ks_profile_pics on asugumar.KS_USERS.USER_ID = asugumar.KS_PROFILE_PICS.USER_ID where location_id = ? and rownum <10
+
+# collaborative filtering
+
+get.similar.creators = select t.*, KS_USERS.name from (select * from asugumar.KS_CREATORS where USER_ID in (select BACKER_ID from (select BACKER_ID, count(PROJECT_ID) as SUPPORT from asugumar.KS_BACKS where PROJECT_ID in (select PROJECT_ID from asugumar.KS_BACKS where BACKER_ID = ?) and BACKER_ID != ? GROUP BY BACKER_ID HAVING count(PROJECT_ID) > 0) where rownum < 500)) t join asugumar.KS_USERS on t.USER_ID = KS_USERS.USER_ID where rownum < 11
+get.similar.backers = select * from asugumar.KS_BACKERS join asugumar.KS_USERS on KS_BACKERS.BACKER_ID = KS_USERS.USER_ID where BACKER_ID in (select BACKER_ID from (select BACKER_ID, count(PROJECT_ID) as SUPPORT from asugumar.KS_BACKS where PROJECT_ID in (select PROJECT_ID from asugumar.KS_BACKS where BACKER_ID = ?) and BACKER_ID != ? GROUP BY BACKER_ID HAVING count(PROJECT_ID) > 0) where rownum < 11)
+get.similar.projects = select * from dpan.ks_projects where project_id in (select PROJECT_ID from (select PROJECT_ID, count(BACKER_ID) as SUPPORT from asugumar.KS_BACKS where BACKER_ID in (select BACKER_ID from asugumar.KS_BACKS where PROJECT_ID = ?) and PROJECT_ID != ? GROUP BY PROJECT_ID HAVING count(BACKER_ID) >= 1) where rownum < 9)
+
+# co-location queries lat, lat, long, latrange, country
+
+get.nearby.locations = select * from (select * from asugumar.ks_locations where location_id in (select location_id from (SELECT location_id, 3956 * 2 * ASIN(SQRT(POWER(SIN((? - abs(latitude)) * 3.1415/180.0 / 2), 2) + COS(? * 3.1415/180.0 ) * COS(abs(latitude) * 3.1415/180.0) * POWER(SIN((? - longitude) * 3.1415/180.0 / 2), 2) )) as  dist FROM KS_LOCATIONS where latitude between ? and ? and COUNTRY = ?) where dist < 100 order by dist asc)) where rownum < 11
+get.nearby.projects = select * from (select * from dpan.ks_projects where location_id in (select * from (select location_id from (SELECT location_id, 3956 * 2 * ASIN(SQRT(POWER(SIN((? - abs(latitude)) * 3.1415/180.0 / 2), 2) + COS(? * 3.1415/180.0 ) * COS(abs(latitude) * 3.1415/180.0) * POWER(SIN((? - longitude) * 3.1415/180.0 / 2), 2) )) as  dist FROM KS_LOCATIONS where latitude between ? and ? and COUNTRY = ?) where dist < 100 order by dist asc) where rownum < 11) and project_id != ?) where rownum < 11
+get.nearby.backers = select * from (select * from asugumar.ks_backers join asugumar.ks_users on asugumar.KS_BACKERS.BACKER_ID = asugumar.KS_USERS.USER_ID where location_id in (select * from (select location_id from (SELECT location_id, 3956 * 2 * ASIN(SQRT(POWER(SIN((? - abs(latitude)) * 3.1415/180.0 / 2), 2) + COS(? * 3.1415/180.0 ) * COS(abs(latitude) * 3.1415/180.0) * POWER(SIN((? - longitude) * 3.1415/180.0 / 2), 2) )) as  dist FROM asugumar.KS_LOCATIONS where latitude between ? and ? and COUNTRY = ?) where dist < 100 order by dist asc) where rownum < 11) and backer_id != ?) where rownum < 11
+get.nearby.creators = select * from (select * from asugumar.ks_creators where location_id in (select * from (select location_id from (SELECT location_id, 3956 * 2 * ASIN(SQRT(POWER(SIN((? - abs(latitude)) * 3.1415/180.0 / 2), 2) + COS(? * 3.1415/180.0 ) * COS(abs(latitude) * 3.1415/180.0) * POWER(SIN((? - longitude) * 3.1415/180.0 / 2), 2) )) as  dist FROM asugumar.KS_LOCATIONS where latitude between ? and ? and COUNTRY = ?) where dist < 100 order by dist asc) where rownum < 11) and user_id !=?) t join asugumar.KS_USERS on t.USER_ID = asugumar.KS_USERS.USER_ID where rownum < 11
+
+# full text search
+search.projects = select p.* from dpan.ks_projects p where contains(name, ?, 1) > 0 and rownum <= 10 order by score(1) desc
+search.users = search.users = select * from asugumar.ks_users u, asugumar.ks_creators c where u.user_id = c.user_id and contains(u.name, ?, 1) > 0 and rownum <= 10 order by score(1) desc
+
+
+# metrics
+metric.money_pledged_percentage = select rownum as rank, name, CAST ((money_pledged / goal) * 100 as int) as percentage from (select * from dpan.ks_projects p where p.goal != 0 order by p.money_pledged/p.goal desc) where rownum < 11
+metric.money_pledged_ca = select rownum as rank, name, CAST ((money_pledged / goal) * 100 as int) as percentage from (select * from dpan.ks_projects p where p.goal != 0 and p.location_id in (select location_id from asugumar.ks_locations l where l.country = 'CA') order by money_pledged/goal desc) where rownum < 11
+metric.backer_us_art = select rownum as rank, name, backer_count from (select * from dpan.ks_projects p where p.subcategory_id in (select subcategory_id from sshi.subcategory s where s.category_id in (select category_id from sshi.main_category c where c.name = 'Art') and p.location_id in (select location_id from asugumar.ks_locations l where l.country = 'US')) order by p.backer_count desc) where rownum < 11
+metric.backer_country_art = select country, cc from (select country, count(backer_id) cc from (select l.country, ber.backer_id as backer_id from asugumar.ks_locations l, asugumar.ks_backers ber, asugumar.ks_backs b, dpan.ks_projects p where l.location_id in (select ber.location_id from asugumar.ks_backers ber where ber.backer_id in (select b.backer_id from asugumar.ks_backs b where b.project_id in (select p.project_id from dpan.ks_projects p where p.subcategory_id in (select subcategory_id from sshi.subcategory s where s.category_id in (select category_id from sshi.main_category c where c.name = 'Art'))))) and ber.location_id = l.location_id and b.backer_id = ber.backer_id and b.project_id = p.project_id and p.project_id in (select p.project_id from dpan.ks_projects p where p.subcategory_id in (select subcategory_id from sshi.subcategory s where s.category_id in (select category_id from sshi.main_category c where c.name = 'Art')))) group by country order by count(backer_id) desc) k where rownum < 8 union(select 'other' as country, sum(cc) as cc from (select country, count(backer_id) cc, row_number() over(order by count(backer_id) desc) no_id from (select l.country, ber.backer_id as backer_id from asugumar.ks_locations l, asugumar.ks_backers ber, asugumar.ks_backs b, dpan.ks_projects p where l.location_id in (select ber.location_id from asugumar.ks_backers ber where ber.backer_id in (select b.backer_id from asugumar.ks_backs b where b.project_id in (select p.project_id from dpan.ks_projects p where p.subcategory_id in (select subcategory_id from sshi.subcategory s where s.category_id in (select category_id from sshi.main_category c where c.name = 'Art'))))) and ber.location_id = l.location_id and b.backer_id = ber.backer_id and b.project_id = p.project_id and p.project_id in (select p.project_id from dpan.ks_projects p where p.subcategory_id in (select subcategory_id from sshi.subcategory s where s.category_id in (select category_id from sshi.main_category c where c.name = 'Art')))) group by country order by count(backer_id) desc) k where no_id > 7)
+metric.creator_country_art = select country, cc from (select country, count(creator_id) cc from (select l.country, cr.creator_id creator_id from asugumar.ks_locations l, asugumar.ks_creators cr, dpan.ks_projects p where l.location_id in (select cr.location_id from asugumar.ks_creators cr where cr.creator_id in (select p.owner_id from dpan.ks_projects p where p.project_id in (select p.project_id from dpan.ks_projects p where p.subcategory_id in (select subcategory_id from sshi.subcategory s where s.category_id in (select category_id from sshi.main_category c where c.name = 'Art'))))) and cr.location_id = l.location_id and p.owner_id = cr.creator_id and p.project_id in (select p.project_id from dpan.ks_projects p where p.subcategory_id in (select subcategory_id from sshi.subcategory s where s.category_id in (select category_id from sshi.main_category c where c.name = 'Art')))) group by country order by count(creator_id) desc) where rownum < 7 union(select 'other' as country, sum(ca) as cc from (select country, count(creator_id) ca, row_number() over(order by count(creator_id) desc) no_id from (select l.country, cr.creator_id creator_id from asugumar.ks_locations l, asugumar.ks_creators cr, dpan.ks_projects p where l.location_id in (select cr.location_id from asugumar.ks_creators cr where cr.creator_id in (select p.owner_id from dpan.ks_projects p where p.project_id in (select p.project_id from dpan.ks_projects p where p.subcategory_id in (select subcategory_id from sshi.subcategory s where s.category_id in (select category_id from sshi.main_category c where c.name = 'Art'))))) and cr.location_id = l.location_id and p.owner_id = cr.creator_id and p.project_id in (select p.project_id from dpan.ks_projects p where p.subcategory_id in (select subcategory_id from sshi.subcategory s where s.category_id in (select category_id from sshi.main_category c where c.name = 'Art')))) group by country order by count(creator_id) desc) where no_id > 6)
+metric.sum_money_us_category = select name, sum(money_pledged_usd)/(select sum(p.money_pledged_usd) from sshi.main_category c, dpan.ks_projects p, asugumar.ks_locations l, sshi.subcategory s where p.location_id = l.location_id and l.country = 'US' and p.subcategory_id = s.subcategory_id and s.category_id = c.category_id)*100 as percentage from (select c.name, p.money_pledged_usd from sshi.main_category c, dpan.ks_projects p, asugumar.ks_locations l, sshi.subcategory s where p.location_id = l.location_id and l.country = 'US' and p.subcategory_id = s.subcategory_id and s.category_id = c.category_id) group by name order by name asc
